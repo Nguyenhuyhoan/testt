@@ -1,4 +1,4 @@
-name: Anisette Server
+name: Anisette 😂
 
 on:
   workflow_dispatch:
@@ -7,23 +7,21 @@ jobs:
   run-server:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Tải trước thư viện Apple và chạy Server
+      - name: 1. Tải và chạy trực tiếp Anisette v3 (Không qua Docker)
         run: |
-          # Tạo thư mục lưu trữ và cấp quyền đầy đủ để tránh lỗi 500 do thiếu quyền ghi file
-          mkdir -p /tmp/anisette
-          chmod -R 777 /tmp/anisette
+          # Tải trực tiếp file chạy gốc từ GitHub của tác giả Dadoum
+          wget -q https://github.com/Dadoum/anisette-v3-server/releases/latest/download/anisette-v3-server-x86_64-unknown-linux-gnu.tar.gz -O anisette.tar.gz
+          tar -xzf anisette.tar.gz
+          chmod +x anisette-v3-server
           
-          # Chạy bản chính thức mới nhất từ kho lưu trữ của tổ chức SideStore
-          docker run -d --name anisette \
-            -v /tmp/anisette:/home/Alcoholic/.config/anisette-v3/lib/ \
-            -p 6969:6969 \
-            ghcr.io/sidestore/anisette-v3-server:latest
-            
-          echo "Đang chờ máy chủ tải thư viện từ Apple (15 giây)..."
-          sleep 15
+          # Khởi chạy máy chủ ở cổng 6969 và ghi lại nhật ký
+          ./anisette-v3-server --host 127.0.0.1 --port 6969 > anisette.log 2>&1 &
+          
+          echo "Đang chờ máy chủ tải thư viện từ Apple (10 giây)..."
+          sleep 10
           
           echo "=== KIỂM TRA TRẠNG THÁI MÁY CHỦ ==="
-          docker logs anisette
+          cat anisette.log
           echo "==================================="
 
       - name: 2. Tạo đường link HTTPS qua Cloudflare
