@@ -1,4 +1,4 @@
-name: Anisette 😂
+name: AnisettePP
 
 on:
   workflow_dispatch:
@@ -7,21 +7,26 @@ jobs:
   run-server:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Tải và chạy trực tiếp Anisette v3 (Không qua Docker)
+      - name: 1. Khởi chạy Anisette v3 với quyền Admin (Sửa lỗi 500)
         run: |
-          # Tải trực tiếp file chạy gốc từ GitHub của tác giả Dadoum
-          wget -q https://github.com/Dadoum/anisette-v3-server/releases/latest/download/anisette-v3-server-x86_64-unknown-linux-gnu.tar.gz -O anisette.tar.gz
-          tar -xzf anisette.tar.gz
-          chmod +x anisette-v3-server
+          # Thêm --user root để cấp toàn quyền ghi file, chống lỗi 500
+          docker run -d --user root --name anisette -p 6969:6969 dadoum/anisette-v3-server:latest
           
-          # Khởi chạy máy chủ ở cổng 6969 và ghi lại nhật ký
-          ./anisette-v3-server --host 127.0.0.1 --port 6969 > anisette.log 2>&1 &
+          echo "Chờ 5 giây cho máy chủ khởi động..."
+          sleep 5
           
-          echo "Đang chờ máy chủ tải thư viện từ Apple (10 giây)..."
+          # Tự động kích hoạt lần đầu để máy chủ tải sẵn thư viện từ Apple về
+          echo "Đang yêu cầu máy chủ tải thư viện gốc từ Apple..."
+          curl -s http://127.0.0.1:6969 > /dev/null
           sleep 10
           
-          echo "=== KIỂM TRA TRẠNG THÁI MÁY CHỦ ==="
-          cat anisette.log
+          echo "=== KIỂM TRA NHẬT KÝ MÁY CHỦ ==="
+          docker logs anisette
+          echo "================================"
+          
+          echo "=== DỮ LIỆU ANISETTE THỬ NGHIỆM ==="
+          curl -s http://127.0.0.1:6969 | head -c 300
+          echo ""
           echo "==================================="
 
       - name: 2. Tạo đường link HTTPS qua Cloudflare
