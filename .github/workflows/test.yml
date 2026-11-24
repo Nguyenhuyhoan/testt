@@ -1,4 +1,5 @@
-name: AnisettePP
+
+name: Anisette Server
 
 on:
   workflow_dispatch:
@@ -7,38 +8,40 @@ jobs:
   run-server:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Khởi chạy Anisette v3 với quyền Admin (Sửa lỗi 500)
+      - name: Khởi chạy Máy chủ Anisette (Bản vá lỗi 500 mới nhất)
         run: |
-          # Thêm --user root để cấp toàn quyền ghi file, chống lỗi 500
-          docker run -d --user root --name anisette -p 6969:6969 dadoum/anisette-v3-server:latest
+          echo "1. Đang tải mã nguồn mới nhất từ nhóm phát triển SideStore..."
+          git clone https://github.com/SideStore/anisette-v3-server.git
+          cd anisette-v3-server
           
-          echo "Chờ 5 giây cho máy chủ khởi động..."
+          echo "2. Đang tự đóng gói máy chủ (Mất khoảng 45 giây, vui lòng chờ)..."
+          docker build -t my-anisette .
+          
+          echo "3. Khởi chạy máy chủ..."
+          docker run -d --user root --name anisette -p 6969:6969 my-anisette
           sleep 5
           
-          # Tự động kích hoạt lần đầu để máy chủ tải sẵn thư viện từ Apple về
-          echo "Đang yêu cầu máy chủ tải thư viện gốc từ Apple..."
+          echo "4. Yêu cầu máy chủ tải thư viện mới từ Apple..."
           curl -s http://127.0.0.1:6969 > /dev/null
           sleep 10
           
-          echo "=== KIỂM TRA NHẬT KÝ MÁY CHỦ ==="
-          docker logs anisette
-          echo "================================"
-          
-          echo "=== DỮ LIỆU ANISETTE THỬ NGHIỆM ==="
-          curl -s http://127.0.0.1:6969 | head -c 300
+          echo "=== KIỂM TRA DỮ LIỆU APPLE TRẢ VỀ ==="
+          curl -i -s http://127.0.0.1:6969 | head -n 20
           echo ""
-          echo "==================================="
+          echo "====================================="
 
-      - name: 2. Tạo đường link HTTPS qua Cloudflare
-        run: |
+          # 5. Bật đường truyền Cloudflare
           wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
           cloudflared tunnel --url http://127.0.0.1:6969 > tunnel.log 2>&1 &
-          sleep 8
+          
+          echo "Đang chờ Cloudflare cấp link (15 giây)..."
+          sleep 15
+          
           echo "=========================================="
           echo "ĐƯỜNG LINK MÁY CHỦ CỦA BẠN LÀ:"
           grep -o 'https://[-a-zA-Z0-9.]*\.trycloudflare\.com' tunnel.log | head -n 1
           echo "=========================================="
-
-      - name: 3. Giữ máy chủ mở trong 15 phút
-        run: sleep 900
+          
+          # Giữ máy chủ sống trong 15 phút
+          sleep 900
