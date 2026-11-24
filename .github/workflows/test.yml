@@ -1,4 +1,4 @@
-name: Anisette ppppp
+name: Anisette uuuu
 
 on:
   workflow_dispatch:
@@ -7,28 +7,33 @@ jobs:
   run-server:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Tải mã nguồn bằng công cụ chính thức của GitHub (Chống nghẽn mạng)
-        uses: actions/checkout@v4
-        with:
-          repository: Dadoum/anisette-v3-server
-
-      - name: 2. Chạy thử và Bắt bệnh lỗi 500
+      - name: Khởi chạy Anisette chuẩn V3 và mở cổng Cloudflare
         run: |
-          # Chạy bản Docker có sẵn và gắn thư mục lưu trữ rõ ràng
-          mkdir -p /tmp/anisette_cache
-          chmod 777 /tmp/anisette_cache
-          
-          docker run -d --user root --name anisette \
-            -v /tmp/anisette_cache:/root/.config/anisette-v3 \
-            -p 6969:6969 \
-            dadoum/anisette-v3-server:latest
-            
+          # 1. Bật máy chủ
+          docker run -d --user root --name anisette -p 6969:6969 dadoum/anisette-v3-server:latest
           sleep 5
           
-          echo "=== GỌI THỬ VÀO MÁY CHỦ ==="
-          curl -i http://127.0.0.1:6969
+          echo "=== KIỂM TRA CỔNG V3 (DÀNH CHO SIDESTORE MỚI) ==="
+          curl -i -s http://127.0.0.1:6969/v3/client_info
           echo ""
+          echo "================================================="
+
+          # 2. Bật đường truyền Cloudflare
+          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared-linux-amd64.deb
+          cloudflared tunnel --url http://127.0.0.1:6969 > tunnel.log 2>&1 &
           
-          echo "=== NGUYÊN NHÂN GÂY LỖI 500 (NHẬT KÝ CHI TIẾT) ==="
-          docker logs anisette
-          echo "=================================================="
+          echo "Đang chờ Cloudflare cấp link (15 giây)..."
+          sleep 15
+          
+          LINK=$(grep -o 'https://[-a-zA-Z0-9.]*\.trycloudflare\.com' tunnel.log | head -n 1)
+          echo "========================================================="
+          echo "1. BẤM THỬ LINK NÀY TRÊN SAFARI SẼ THẤY KHÔNG BỊ LỖI 500:"
+          echo "${LINK}/v3/client_info"
+          echo ""
+          echo "2. ĐƯỜNG LINK ĐỂ DÁN VÀO SIDESTORE (HOẶC CODE SIDESTORE):"
+          echo "${LINK}"
+          echo "========================================================="
+          
+          # Giữ máy chủ mở trong 15 phút để bạn vào SideStore test Login/Refresh
+          sleep 900
