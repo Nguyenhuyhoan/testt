@@ -1,27 +1,41 @@
-name: test
+name: Anisette Server
 
 on:
-  workflow_dispatch: # Cho phép bấm nút bật bằng tay trên iPhone
+  workflow_dispatch:
 
 jobs:
   run-server:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Khởi chạy Anisette v3 Server
+      - name: 1. Tải trước thư viện Apple và chạy Server
         run: |
-          docker run -d --name anisette -p 6969:6969 dadoum/anisette-v3-server:latest
-          sleep 5
+          # Tạo thư mục lưu trữ và cấp quyền đầy đủ để tránh lỗi 500 do thiếu quyền ghi file
+          mkdir -p /tmp/anisette
+          chmod -R 777 /tmp/anisette
+          
+          # Chạy bản chính thức mới nhất từ kho lưu trữ của tổ chức SideStore
+          docker run -d --name anisette \
+            -v /tmp/anisette:/home/Alcoholic/.config/anisette-v3/lib/ \
+            -p 6969:6969 \
+            ghcr.io/sidestore/anisette-v3-server:latest
+            
+          echo "Đang chờ máy chủ tải thư viện từ Apple (15 giây)..."
+          sleep 15
+          
+          echo "=== KIỂM TRA TRẠNG THÁI MÁY CHỦ ==="
+          docker logs anisette
+          echo "==================================="
 
       - name: 2. Tạo đường link HTTPS qua Cloudflare
         run: |
           wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
-          cloudflared tunnel --url http://localhost:6969 > tunnel.log 2>&1 &
+          cloudflared tunnel --url http://127.0.0.1:6969 > tunnel.log 2>&1 &
           sleep 8
           echo "=========================================="
           echo "ĐƯỜNG LINK MÁY CHỦ CỦA BẠN LÀ:"
           grep -o 'https://[-a-zA-Z0-9.]*\.trycloudflare\.com' tunnel.log | head -n 1
           echo "=========================================="
 
-      - name: 3. Giữ máy chủ mở trong 15 phút để Refresh
+      - name: 3. Giữ máy chủ mở trong 15 phút
         run: sleep 900
