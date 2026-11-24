@@ -1,37 +1,45 @@
-
-name: Anisette Server (macOS)
+name: Anisette Server (Mac OS X)
 
 on:
   workflow_dispatch:
 
 jobs:
   run-server:
-    runs-on: macos-latest # Đổi sang máy tính Mac thật của Apple để lấy IP sạch
+    runs-on: macos-13 # Máy Mac OS X chip Intel (Hỗ trợ ảo hóa và không bị lỗi VZ)
     steps:
-      - name: Khởi chạy Anisette trên máy Mac và kiểm tra lỗi 500
+      - name: Khởi chạy Anisette trên Mac OS X
         run: |
-          # 1. Cài đặt Docker nhẹ (Colima) cho máy Mac của GitHub
-          brew install colima docker cloudflared
-          colima start --cpu 2 --memory 2
+          # 1. Cài đặt trình biên dịch D (ldc) và công cụ trên Mac OS X
+          brew install ldc dub openssl cloudflared
           
-          # 2. Chạy máy chủ Anisette trên dải IP của máy Mac
-          docker run -d --user root --name anisette -p 6969:6969 dadoum/anisette-v3-server:latest
-          sleep 5
+          # 2. Tải mã nguồn Anisette v3 và chạy trực tiếp trên Mac OS X (Không cần Docker!)
+          git clone https://github.com/Dadoum/anisette-v3-server.git
+          cd anisette-v3-server
           
-          echo "=== KIỂM TRA TRANG CHỦ (XEM CÒN LỖI 500 KHÔNG) ==="
+          echo "Đang biên dịch phần mềm trực tiếp cho Mac OS X (Mất khoảng 40 giây)..."
+          dub build --build=release --compiler=ldc2
+          
+          # 3. Khởi chạy máy chủ trực tiếp trên IP của máy Mac
+          ./anisette-v3-server -n 0.0.0.0 -p 6969 > anisette.log 2>&1 &
+          sleep 8
+          
+          echo "=== KIỂM TRA TRANG CHỦ TRÊN MAC OS X ==="
           curl -i -s http://127.0.0.1:6969
           echo ""
+          echo "=== KIỂM TRA CỔNG V3 TRÊN MAC OS X ==="
+          curl -i -s http://127.0.0.1:6969/v3/client_info
+          echo ""
           echo "=== NHẬT KÝ MÁY CHỦ ==="
-          docker logs anisette
+          cat anisette.log
           echo "======================="
 
-          # 3. Mở đường truyền Cloudflare
+          # 4. Mở đường truyền Cloudflare
           cloudflared tunnel --url http://127.0.0.1:6969 > tunnel.log 2>&1 &
           sleep 12
           
           LINK=$(grep -o 'https://[-a-zA-Z0-9.]*\.trycloudflare\.com' tunnel.log | head -n 1)
           echo "========================================================="
-          echo "ĐƯỜNG LINK MÁY CHỦ TRÊN MAC CỦA BẠN LÀ:"
+          echo "ĐƯỜNG LINK MÁY CHỦ MAC OS X CỦA BẠN LÀ:"
           echo "${LINK}"
           echo "========================================================="
           
